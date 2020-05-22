@@ -636,6 +636,10 @@ public class MenuEntrySwapperPlugin extends Plugin
 		{
 			swap("empty", option, target, index);
 		}
+		else if (config.swapGauntlet() && option.equals("enter") && target.equals("the gauntlet"))
+		{
+			swap("enter-corrupted", option, target, index);
+		}
 		else if (config.swapQuick() && option.equals("enter"))
 		{
 			swap("quick-enter", option, target, index);
@@ -728,6 +732,18 @@ public class MenuEntrySwapperPlugin extends Plugin
 			swap("watson", option, target, index);
 			swap("barbarian guard", option, target, index);
 			swap("random", option, target, index);
+		}
+		else if (shiftModifier && option.equals("value"))
+		{
+			if (config.shopBuy() != null && config.shopBuy() != BuyMode.OFF)
+			{
+				swap(config.shopBuy().getOption(), option, target, index);
+			}
+
+			if (config.shopSell() != null && config.shopSell() != SellMode.OFF)
+			{
+				swap(config.shopSell().getOption(), option, target, index);
+			}
 		}
 		else if (config.shiftClickCustomization() && shiftModifier && !option.equals("use"))
 		{

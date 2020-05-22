@@ -24,10 +24,14 @@
  */
 package net.runelite.client.config;
 
+import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
 import net.runelite.api.Constants;
 import net.runelite.client.Notifier;
 import net.runelite.client.ui.ContainableFrame;
+import net.runelite.client.ui.overlay.components.ComponentConstants;
 
 @ConfigGroup(RuneLiteConfig.GROUP_NAME)
 public interface RuneLiteConfig extends Config
@@ -148,12 +152,12 @@ public interface RuneLiteConfig extends Config
 	@ConfigItem(
 		keyName = "notificationRequestFocus",
 		name = "Request focus on notification",
-		description = "Toggles window focus request",
+		description = "Configures the window focus request type on notification",
 		position = 21
 	)
-	default boolean requestFocusOnNotification()
+	default RequestFocusType notificationRequestFocus()
 	{
-		return true;
+		return RequestFocusType.OFF;
 	}
 
 	@ConfigItem(
@@ -279,13 +283,47 @@ public interface RuneLiteConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "overlayBackgroundColor",
+		name = "Overlay Color",
+		description = "Configures the background color of infoboxes and overlays",
+		position = 43
+	)
+	@Alpha
+	default Color overlayBackgroundColor()
+	{
+		return ComponentConstants.STANDARD_BACKGROUND_COLOR;
+	}
+
+	@ConfigItem(
 		keyName = "blockExtraMouseButtons",
 		name = "Block Extra Mouse Buttons",
 		description = "Blocks extra mouse buttons (4 and above)",
-		position = 43
+		position = 44
 	)
 	default boolean blockExtraMouseButtons()
 	{
 		return true;
+	}
+
+	@ConfigItem(
+		keyName = "sidebarToggleKey",
+		name = "Sidebar Toggle Key",
+		description = "The key that will toggle the sidebar (accepts modifiers)",
+		position = 45
+	)
+	default Keybind sidebarToggleKey()
+	{
+		return new Keybind(KeyEvent.VK_F11, InputEvent.CTRL_DOWN_MASK);
+	}
+
+	@ConfigItem(
+		keyName = "panelToggleKey",
+		name = "Plugin Panel Toggle Key",
+		description = "The key that will toggle the current or last opened plugin panel (accepts modifiers)",
+		position = 46
+	)
+	default Keybind panelToggleKey()
+	{
+		return new Keybind(KeyEvent.VK_F12, InputEvent.CTRL_DOWN_MASK);
 	}
 }

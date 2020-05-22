@@ -66,6 +66,7 @@ import net.runelite.api.GameState;
 import net.runelite.api.InventoryID;
 import net.runelite.api.ItemComposition;
 import net.runelite.api.ItemContainer;
+import net.runelite.api.ItemID;
 import net.runelite.api.MessageNode;
 import net.runelite.api.NPC;
 import net.runelite.api.Player;
@@ -80,6 +81,10 @@ import net.runelite.api.widgets.WidgetID;
 import net.runelite.client.account.AccountSession;
 import net.runelite.client.account.SessionManager;
 import net.runelite.client.callback.ClientThread;
+import net.runelite.client.chat.ChatColorType;
+import net.runelite.client.chat.ChatMessageBuilder;
+import net.runelite.client.chat.ChatMessageManager;
+import net.runelite.client.chat.QueuedMessage;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
@@ -98,6 +103,7 @@ import net.runelite.client.task.Schedule;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.util.ImageUtil;
+import net.runelite.client.util.QuantityFormatter;
 import net.runelite.client.util.Text;
 import net.runelite.http.api.loottracker.GameItem;
 import net.runelite.http.api.loottracker.LootAggregate;
@@ -126,26 +132,25 @@ public class LootTrackerPlugin extends Plugin
 	private static final String HERBIBOAR_EVENT = "Herbiboar";
 	private static final Pattern HERBIBOAR_HERB_SACK_PATTERN = Pattern.compile(".+(Grimy .+?) herb.+");
 
+	// Seed Pack loot handling
+	private static final String SEEDPACK_EVENT = "Seed pack";
+
 	// Hespori loot handling
 	private static final String HESPORI_LOOTED_MESSAGE = "You have successfully cleared this patch for new crops.";
 	private static final String HESPORI_EVENT = "Hespori";
 	private static final int HESPORI_REGION = 5021;
 
-	// Gauntlet loot handling
-	private static final String GAUNTLET_LOOTED_MESSAGE = "You open the chest.";
-	private static final String GAUNTLET_EVENT = "The Gauntlet";
-	private static final int GAUNTLET_LOBBY_REGION = 12127;
-
 	// Chest loot handling
 	private static final String CHEST_LOOTED_MESSAGE = "You find some treasure in the chest!";
 	private static final Pattern LARRAN_LOOTED_PATTERN = Pattern.compile("You have opened Larran's (big|small) chest .*");
-	private static final Map<Integer, String> CHEST_EVENT_TYPES = ImmutableMap.of(
-		5179, "Brimstone Chest",
-		11573, "Crystal Chest",
-		12093, "Larran's big chest",
-		13113, "Larran's small chest",
-		13151, "Elven Crystal Chest"
-	);
+	private static final Map<Integer, String> CHEST_EVENT_TYPES = new ImmutableMap.Builder<Integer, String>().
+		put(5179, "Brimstone Chest").
+		put(11573, "Crystal Chest").
+		put(12093, "Larran's big chest").
+		put(12127, "The Gauntlet").
+		put(13113, "Larran's small chest").
+		put(13151, "Elven Crystal Chest").
+		build();
 
 	// Last man standing map regions
 	private static final Set<Integer> LAST_MAN_STANDING_REGIONS = ImmutableSet.of(13658, 13659, 13914, 13915, 13916);
@@ -189,6 +194,9 @@ public class LootTrackerPlugin extends Plugin
 	@Inject
 	private EventBus eventBus;
 
+	@Inject
+	private ChatMessageManager chatMessageManager;
+
 	private LootTrackerPanel panel;
 	private NavigationButton navButton;
 	@VisibleForTesting
@@ -207,14 +215,12 @@ public class LootTrackerPlugin extends Plugin
 	private LootTrackerClient lootTrackerClient;
 	private final List<LootRecord> queuedLoots = new ArrayList<>();
 
-	@VisibleForTesting
-	Collection<ItemStack> stack(Collection<ItemStack> items)
+	private static Collection<ItemStack> stack(Collection<ItemStack> items)
 	{
 		final List<ItemStack> list = new ArrayList<>();
 
-		for (ItemStack item : items)
+		for (final ItemStack item : items)
 		{
-			item = LootTrackerMapping.map(item, itemManager);
 			int quantity = 0;
 			for (final ItemStack i : list)
 			{
@@ -394,6 +400,11 @@ public class LootTrackerPlugin extends Plugin
 		final int combat = npc.getCombatLevel();
 
 		addLoot(name, combat, LootRecordType.NPC, items);
+
+		if (config.npcKillChatMessage())
+		{
+			lootReceivedChatMessage(items, "a " + name);
+		}
 	}
 
 	@Subscribe
@@ -411,6 +422,11 @@ public class LootTrackerPlugin extends Plugin
 		final int combat = player.getCombatLevel();
 
 		addLoot(name, combat, LootRecordType.PLAYER, items);
+
+		if (config.pvpKillChatMessage())
+		{
+			lootReceivedChatMessage(items, name);
+		}
 	}
 
 	@Subscribe
@@ -542,14 +558,6 @@ public class LootTrackerPlugin extends Plugin
 			return;
 		}
 
-		if (GAUNTLET_LOBBY_REGION == regionID && message.equals(GAUNTLET_LOOTED_MESSAGE))
-		{
-			eventType = GAUNTLET_EVENT;
-			lootRecordType = LootRecordType.EVENT;
-			takeInventorySnapshot();
-			return;
-		}
-
 		final Matcher pickpocketMatcher = PICKPOCKET_REGEX.matcher(message);
 		if (pickpocketMatcher.matches())
 		{
@@ -618,7 +626,7 @@ public class LootTrackerPlugin extends Plugin
 		if (CHEST_EVENT_TYPES.containsValue(eventType)
 			|| HERBIBOAR_EVENT.equals(eventType)
 			|| HESPORI_EVENT.equals(eventType)
-			|| GAUNTLET_EVENT.equals(eventType)
+			|| SEEDPACK_EVENT.equals(eventType)
 			|| lootRecordType == LootRecordType.PICKPOCKET)
 		{
 			processInventoryLoot(eventType, lootRecordType, event.getItemContainer());
@@ -635,6 +643,13 @@ public class LootTrackerPlugin extends Plugin
 		if (event.getMenuOption().equals("Pickpocket"))
 		{
 			lastPickpocketTarget = Text.removeTags(event.getMenuTarget());
+		}
+
+		if (event.getMenuOption().equals("Take") && event.getId() == ItemID.SEED_PACK)
+		{
+			eventType = SEEDPACK_EVENT;
+			lootRecordType = LootRecordType.EVENT;
+			takeInventorySnapshot();
 		}
 	}
 
@@ -839,5 +854,35 @@ public class LootTrackerPlugin extends Plugin
 		}
 
 		return false;
+	}
+
+	private long getTotalPrice(Collection<ItemStack> items)
+	{
+		long totalPrice = 0;
+
+		for (final ItemStack itemStack : items)
+		{
+			totalPrice += (long) itemManager.getItemPrice(itemStack.getId()) * itemStack.getQuantity();
+		}
+
+		return totalPrice;
+	}
+
+	private void lootReceivedChatMessage(final Collection<ItemStack> items, final String name)
+	{
+		final String message = new ChatMessageBuilder()
+			.append(ChatColorType.HIGHLIGHT)
+			.append("You've killed ")
+			.append(name)
+			.append(" for ")
+			.append(QuantityFormatter.quantityToStackSize(getTotalPrice(items)))
+			.append(" loot.")
+			.build();
+
+		chatMessageManager.queue(
+			QueuedMessage.builder()
+				.type(ChatMessageType.CONSOLE)
+				.runeLiteFormattedMessage(message)
+				.build());
 	}
 }
