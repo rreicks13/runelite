@@ -377,6 +377,13 @@ public class GrandExchangePlugin extends Plugin
 		final int slot = offerEvent.getSlot();
 		final GrandExchangeOffer offer = offerEvent.getOffer();
 
+		if (offer.getState() == GrandExchangeOfferState.EMPTY && client.getGameState() != GameState.LOGGED_IN)
+		{
+			// Trades are cleared by the client during LOGIN_SCREEN/HOPPING/LOGGING_IN, ignore those so we don't
+			// zero and re-submit the trade on login as an update
+			return;
+		}
+
 		log.debug("GE offer updated: state: {}, slot: {}, item: {}, qty: {}, login: {}",
 			offer.getState(), slot, offer.getItemId(), offer.getQuantitySold(), loginBurstGeUpdates);
 
@@ -412,10 +419,9 @@ public class GrandExchangePlugin extends Plugin
 			GrandExchangeTrade grandExchangeTrade = new GrandExchangeTrade();
 			grandExchangeTrade.setBuy(state == GrandExchangeOfferState.BUYING);
 			grandExchangeTrade.setItemId(offer.getItemId());
-			grandExchangeTrade.setQuantity(0);
 			grandExchangeTrade.setTotal(offer.getTotalQuantity());
-			grandExchangeTrade.setSpent(0);
 			grandExchangeTrade.setOffer(offer.getPrice());
+			grandExchangeTrade.setSlot(slot);
 			grandExchangeTrade.setWorldType(getGeWorldType());
 			grandExchangeTrade.setLogin(loginBurstGeUpdates);
 
@@ -442,10 +448,11 @@ public class GrandExchangePlugin extends Plugin
 			grandExchangeTrade.setBuy(state == GrandExchangeOfferState.CANCELLED_BUY);
 			grandExchangeTrade.setCancel(true);
 			grandExchangeTrade.setItemId(offer.getItemId());
-			grandExchangeTrade.setQuantity(offer.getQuantitySold());
+			grandExchangeTrade.setQty(offer.getQuantitySold());
 			grandExchangeTrade.setTotal(offer.getTotalQuantity());
 			grandExchangeTrade.setSpent(offer.getSpent());
 			grandExchangeTrade.setOffer(offer.getPrice());
+			grandExchangeTrade.setSlot(slot);
 			grandExchangeTrade.setWorldType(getGeWorldType());
 			grandExchangeTrade.setLogin(loginBurstGeUpdates);
 
@@ -464,10 +471,13 @@ public class GrandExchangePlugin extends Plugin
 		GrandExchangeTrade grandExchangeTrade = new GrandExchangeTrade();
 		grandExchangeTrade.setBuy(state == GrandExchangeOfferState.BUYING);
 		grandExchangeTrade.setItemId(offer.getItemId());
-		grandExchangeTrade.setQuantity(qty);
+		grandExchangeTrade.setQty(offer.getQuantitySold());
+		grandExchangeTrade.setDqty(qty);
 		grandExchangeTrade.setTotal(offer.getTotalQuantity());
-		grandExchangeTrade.setSpent(dspent);
+		grandExchangeTrade.setDspent(dspent);
+		grandExchangeTrade.setSpent(offer.getSpent());
 		grandExchangeTrade.setOffer(offer.getPrice());
+		grandExchangeTrade.setSlot(slot);
 		grandExchangeTrade.setWorldType(getGeWorldType());
 		grandExchangeTrade.setLogin(loginBurstGeUpdates);
 
