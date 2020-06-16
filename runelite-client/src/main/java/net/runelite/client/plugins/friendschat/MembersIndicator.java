@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Tomas Slusny <slusnucky@gmail.com>
+ * Copyright (c) 2018 Sebastiaan <https://github.com/SebastiaanVanspauwen>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -22,18 +22,37 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package net.runelite.api.events;
+package net.runelite.client.plugins.friendschat;
 
-import lombok.Value;
+import java.awt.Color;
+import java.awt.image.BufferedImage;
+import net.runelite.client.ui.overlay.infobox.Counter;
 
-/**
- * An event where the client has joined or left a clan chat.
- */
-@Value
-public class ClanChanged
+class MembersIndicator extends Counter
 {
-	/**
-	 * Whether or not the client is now in a clan chat.
-	 */
-	private boolean joined;
+	private final FriendsChatPlugin plugin;
+
+	MembersIndicator(BufferedImage image, FriendsChatPlugin plugin)
+	{
+		super(image, plugin, plugin.getMembersSize());
+		this.plugin = plugin;
+	}
+
+	@Override
+	public int getCount()
+	{
+		return plugin.getMembersSize();
+	}
+
+	@Override
+	public String getTooltip()
+	{
+		return plugin.getMembersSize() + " friends chat member(s) near you";
+	}
+
+	@Override
+	public Color getTextColor()
+	{
+		return Color.WHITE;
+	}
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Kamiel
+ * Copyright (c) 2019, Adam <Adam@sigterm.info>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -22,26 +22,15 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package net.runelite.api;
+package net.runelite.client.plugins.friendschat;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
+import lombok.Value;
+import net.runelite.api.MessageNode;
 
-/**
- * Client side only, content-developer strings
- *
- * VarCInts are stored entirely in memory, or locally on a user's
- * machine in the preferences2.dat file depending on how Jagex
- * configured the variable
- */
-@AllArgsConstructor
-@Getter
-public enum VarClientStr
+@Value
+class MemberJoinMessage
 {
-	CHATBOX_TYPED_TEXT(335),
-	INPUT_TEXT(359),
-	PRIVATE_MESSAGE_TARGET(360),
-	RECENT_FRIENDS_CHAT(362);
-
-	private final int index;
+	private final MessageNode messageNode;
+	private final int getMessageId;
+	private final int tick;
 }

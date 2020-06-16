@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Adam <Adam@sigterm.info>
+ * Copyright (c) 2017, Adam <Adam@sigterm.info>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -22,15 +22,24 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package net.runelite.client.plugins.clanchat;
+package net.runelite.api;
 
-import lombok.Value;
-import net.runelite.api.MessageNode;
-
-@Value
-class ClanJoinMessage
+/**
+ * Represents a friends chat member.
+ */
+public interface FriendsChatMember extends ChatPlayer
 {
-	private final MessageNode messageNode;
-	private final int getMessageId;
-	private final int tick;
+	/**
+	 * Gets the world the member is in.
+	 *
+	 * @return the world
+	 */
+	int getWorld();
+
+	/**
+	 * Gets the rank of the friends chat member.
+	 *
+	 * @return the rank
+	 */
+	FriendsChatRank getRank();
 }
