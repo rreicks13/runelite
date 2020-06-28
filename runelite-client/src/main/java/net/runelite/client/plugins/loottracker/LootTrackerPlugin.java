@@ -61,7 +61,6 @@ import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
-import net.runelite.api.Constants;
 import net.runelite.api.GameState;
 import net.runelite.api.InventoryID;
 import net.runelite.api.ItemComposition;
@@ -112,6 +111,7 @@ import net.runelite.http.api.loottracker.LootAggregate;
 import net.runelite.http.api.loottracker.LootRecord;
 import net.runelite.http.api.loottracker.LootRecordType;
 import net.runelite.http.api.loottracker.LootTrackerClient;
+import okhttp3.OkHttpClient;
 import org.apache.commons.text.WordUtils;
 
 @PluginDescriptor(
@@ -198,6 +198,8 @@ public class LootTrackerPlugin extends Plugin
 		"H.A.M. Member", "Woman"
 	);
 
+	private static final String CASKET_EVENT = "Casket";
+
 	private static final Set<Character> VOWELS = ImmutableSet.of('a', 'e', 'i', 'o', 'u');
 
 	@Inject
@@ -232,6 +234,9 @@ public class LootTrackerPlugin extends Plugin
 
 	@Inject
 	private LootManager lootManager;
+
+	@Inject
+	private OkHttpClient okHttpClient;
 
 	private LootTrackerPanel panel;
 	private NavigationButton navButton;
@@ -292,7 +297,7 @@ public class LootTrackerPlugin extends Plugin
 		AccountSession accountSession = sessionManager.getAccountSession();
 		if (accountSession.getUuid() != null)
 		{
-			lootTrackerClient = new LootTrackerClient(accountSession.getUuid());
+			lootTrackerClient = new LootTrackerClient(okHttpClient, accountSession.getUuid());
 		}
 		else
 		{
@@ -340,7 +345,7 @@ public class LootTrackerPlugin extends Plugin
 		AccountSession accountSession = sessionManager.getAccountSession();
 		if (accountSession != null)
 		{
-			lootTrackerClient = new LootTrackerClient(accountSession.getUuid());
+			lootTrackerClient = new LootTrackerClient(okHttpClient, accountSession.getUuid());
 
 			clientThread.invokeLater(() ->
 			{
@@ -685,6 +690,7 @@ public class LootTrackerPlugin extends Plugin
 			|| HERBIBOAR_EVENT.equals(eventType)
 			|| HESPORI_EVENT.equals(eventType)
 			|| SEEDPACK_EVENT.equals(eventType)
+			|| CASKET_EVENT.equals(eventType)
 			|| lootRecordType == LootRecordType.PICKPOCKET)
 		{
 			WorldPoint playerLocation = client.getLocalPlayer().getWorldLocation();
@@ -716,6 +722,13 @@ public class LootTrackerPlugin extends Plugin
 		if (event.getMenuOption().equals("Open") && SHADE_CHEST_OBJECTS.containsKey(event.getId()))
 		{
 			eventType = SHADE_CHEST_OBJECTS.get(event.getId());
+			lootRecordType = LootRecordType.EVENT;
+			takeInventorySnapshot();
+		}
+
+		if (event.getMenuOption().equals("Open") && event.getId() == ItemID.CASKET)
+		{
+			eventType = CASKET_EVENT;
 			lootRecordType = LootRecordType.EVENT;
 			takeInventorySnapshot();
 		}
@@ -867,7 +880,7 @@ public class LootTrackerPlugin extends Plugin
 	{
 		final ItemComposition itemComposition = itemManager.getItemComposition(itemId);
 		final int gePrice = itemManager.getItemPrice(itemId);
-		final int haPrice = Math.round(itemComposition.getPrice() * Constants.HIGH_ALCHEMY_MULTIPLIER);
+		final int haPrice = itemComposition.getHaPrice();
 		final boolean ignored = ignoredItems.contains(itemComposition.getName());
 
 		return new LootTrackerItem(
