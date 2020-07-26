@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Adam <Adam@sigterm.info>
+ * Copyright (c) 2018, Matthew Steglinski <https://github.com/sainttx>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -22,12 +22,16 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package net.runelite.client.input;
+package net.runelite.api.events;
 
-public interface KeyListener extends java.awt.event.KeyListener
+import lombok.Value;
+import net.runelite.api.Actor;
+
+/**
+ * An event fired when an actor dies.
+ */
+@Value
+public class ActorDeath
 {
-	default boolean isEnabledOnLoginScreen()
-	{
-		return false;
-	}
+	private final Actor actor;
 }
