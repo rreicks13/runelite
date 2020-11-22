@@ -134,6 +134,28 @@ public interface MenuEntrySwapperConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "swapHerbs",
+		name = "Clean",
+		description = "Swap Clean with Use on Herbs",
+		section = itemSection
+	)
+	default boolean swapHerbs()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "swapPrayerBook",
+		name = "Recite-Prayer",
+		description = "Swap Read with Recite-prayer on the Prayer Book from The Great Brain Robbery quest",
+		section = itemSection
+	)
+	default boolean swapPrayerBook()
+	{
+		return false;
+	}
+
+	@ConfigItem(
 		keyName = "swapContract",
 		name = "Contract",
 		description = "Swap Talk-to with Contract on Guildmaster Jane",
@@ -559,6 +581,28 @@ public interface MenuEntrySwapperConfig extends Config
 		section = uiSection
 	)
 	default boolean swapTan()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "swapCollectMiscellania",
+		name = "Miscellania",
+		description = "Swap Talk-to with Collect for Advisor Ghrim",
+		section = npcSection
+	)
+	default boolean swapCollectMiscellania()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "swapDepositItems",
+		name = "Deposit Items",
+		description = "Swap Talk-to with Deposit-items",
+		section = npcSection
+	)
+	default boolean swapDepositItems()
 	{
 		return false;
 	}

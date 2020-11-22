@@ -72,13 +72,11 @@ import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.ItemVariationMapping;
 import net.runelite.client.game.SpriteManager;
 import net.runelite.client.game.chatbox.ChatboxPanelManager;
-import net.runelite.client.input.KeyManager;
 import net.runelite.client.input.MouseManager;
 import net.runelite.client.input.MouseWheelListener;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDependency;
 import net.runelite.client.plugins.PluginDescriptor;
-import net.runelite.client.plugins.banktags.tabs.BankSearch;
 import net.runelite.client.plugins.banktags.tabs.TabInterface;
 import static net.runelite.client.plugins.banktags.tabs.TabInterface.FILTERED_CHARS;
 import net.runelite.client.plugins.banktags.tabs.TabSprites;
@@ -137,12 +135,6 @@ public class BankTagsPlugin extends Plugin implements MouseWheelListener
 
 	@Inject
 	private TabInterface tabInterface;
-
-	@Inject
-	private BankSearch bankSearch;
-
-	@Inject
-	private KeyManager keyManager;
 
 	@Inject
 	private SpriteManager spriteManager;
@@ -233,7 +225,7 @@ public class BankTagsPlugin extends Plugin implements MouseWheelListener
 			return;
 		}
 
-		String replaced = value.replaceAll("[<>/]", "");
+		String replaced = value.replaceAll("[<>:/]", "");
 		if (!value.equals(replaced))
 		{
 			replaced = Text.toCSV(Text.fromCSV(replaced));
@@ -466,7 +458,8 @@ public class BankTagsPlugin extends Plugin implements MouseWheelListener
 	@Subscribe
 	public void onScriptPreFired(ScriptPreFired event)
 	{
-		if (event.getScriptId() == ScriptID.BANKMAIN_FINISHBUILDING)
+		int scriptId = event.getScriptId();
+		if (scriptId == ScriptID.BANKMAIN_FINISHBUILDING)
 		{
 			// Since we apply tag tab search filters even when the bank is not in search mode,
 			// bankkmain_build will reset the bank title to "The Bank of Gielinor". So apply our
@@ -483,6 +476,10 @@ public class BankTagsPlugin extends Plugin implements MouseWheelListener
 				Widget bankTitle = client.getWidget(WidgetInfo.BANK_TITLE_BAR);
 				bankTitle.setText("Tag tab <col=ff0000>" + activeTab.getTag() + "</col>");
 			}
+		}
+		else if (scriptId == ScriptID.BANKMAIN_SEARCH_TOGGLE)
+		{
+			tabInterface.handleSearch();
 		}
 	}
 
@@ -505,69 +502,69 @@ public class BankTagsPlugin extends Plugin implements MouseWheelListener
 			return;
 		}
 
-		// allow time for the tab interface to become active
-		clientThread.invokeLater(() ->
+		if (!tabInterface.isActive())
 		{
-			if (!tabInterface.isActive())
+			return;
+		}
+
+		Widget itemContainer = client.getWidget(WidgetInfo.BANK_ITEM_CONTAINER);
+		if (itemContainer == null)
+		{
+			return;
+		}
+
+		int items = 0;
+
+		Widget[] containerChildren = itemContainer.getDynamicChildren();
+
+		// sort the child array as the items are not in the displayed order
+		Arrays.sort(containerChildren, Comparator.comparing(Widget::getOriginalY)
+			.thenComparing(Widget::getOriginalX));
+
+		for (Widget child : containerChildren)
+		{
+			if (child.getItemId() != -1 && !child.isHidden())
 			{
-				return;
-			}
+				// calculate correct item position as if this was a normal tab
+				int adjYOffset = (items / ITEMS_PER_ROW) * ITEM_VERTICAL_SPACING;
+				int adjXOffset = (items % ITEMS_PER_ROW) * ITEM_HORIZONTAL_SPACING + ITEM_ROW_START;
 
-			Widget itemContainer = client.getWidget(WidgetInfo.BANK_ITEM_CONTAINER);
-			if (itemContainer == null)
-			{
-				return;
-			}
-
-			int items = 0;
-
-			Widget[] containerChildren = itemContainer.getDynamicChildren();
-
-			// sort the child array as the items are not in the displayed order
-			Arrays.sort(containerChildren, Comparator.comparing(Widget::getOriginalY)
-				.thenComparing(Widget::getOriginalX));
-
-			for (Widget child : containerChildren)
-			{
-				if (child.getItemId() != -1 && !child.isHidden())
+				if (child.getOriginalY() != adjYOffset)
 				{
-					// calculate correct item position as if this was a normal tab
-					int adjYOffset = (items / ITEMS_PER_ROW) * ITEM_VERTICAL_SPACING;
-					int adjXOffset = (items % ITEMS_PER_ROW) * ITEM_HORIZONTAL_SPACING + ITEM_ROW_START;
-
-					if (child.getOriginalY() != adjYOffset)
-					{
-						child.setOriginalY(adjYOffset);
-						child.revalidate();
-					}
-
-					if (child.getOriginalX() != adjXOffset)
-					{
-						child.setOriginalX(adjXOffset);
-						child.revalidate();
-					}
-
-					items++;
+					child.setOriginalY(adjYOffset);
+					child.revalidate();
 				}
 
-				// separator line or tab text
-				if (child.getSpriteId() == SpriteID.RESIZEABLE_MODE_SIDE_PANEL_BACKGROUND
-					|| child.getText().contains("Tab"))
+				if (child.getOriginalX() != adjXOffset)
 				{
-					child.setHidden(true);
+					child.setOriginalX(adjXOffset);
+					child.revalidate();
 				}
+
+				items++;
 			}
 
-			int itemContainerHeight = client.getWidget(WidgetInfo.BANK_ITEM_CONTAINER).getHeight();
-			// add a second row of height here to allow users to scroll down when the last row is partially visible
-			int adjustedScrollHeight = (items / ITEMS_PER_ROW) * ITEM_VERTICAL_SPACING + ITEM_VERTICAL_SPACING;
-			itemContainer.setScrollHeight(Math.max(adjustedScrollHeight, itemContainerHeight));
+			// separator line or tab text
+			if (child.getSpriteId() == SpriteID.RESIZEABLE_MODE_SIDE_PANEL_BACKGROUND
+				|| child.getText().contains("Tab"))
+			{
+				child.setHidden(true);
+			}
+		}
 
+		final Widget bankItemContainer = client.getWidget(WidgetInfo.BANK_ITEM_CONTAINER);
+		int itemContainerHeight = bankItemContainer.getHeight();
+		// add a second row of height here to allow users to scroll down when the last row is partially visible
+		int adjustedScrollHeight = (items / ITEMS_PER_ROW) * ITEM_VERTICAL_SPACING + ITEM_VERTICAL_SPACING;
+		itemContainer.setScrollHeight(Math.max(adjustedScrollHeight, itemContainerHeight));
+
+		final int itemContainerScroll = bankItemContainer.getScrollY();
+		clientThread.invokeLater(() ->
 			client.runScript(ScriptID.UPDATE_SCROLLBAR,
 				WidgetInfo.BANK_SCROLLBAR.getId(),
 				WidgetInfo.BANK_ITEM_CONTAINER.getId(),
-				0);
-		});
+				itemContainerScroll));
+
 	}
 
 	@Subscribe

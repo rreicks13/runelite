@@ -109,8 +109,6 @@ public class ClientUI
 	private static final String CONFIG_CLIENT_BOUNDS = "clientBounds";
 	private static final String CONFIG_CLIENT_MAXIMIZED = "clientMaximized";
 	private static final String CONFIG_CLIENT_SIDEBAR_CLOSED = "clientSidebarClosed";
-	private static final int CLIENT_WELL_HIDDEN_MARGIN = 160;
-	private static final int CLIENT_WELL_HIDDEN_MARGIN_TOP = 10;
 	public static final BufferedImage ICON = ImageUtil.getResourceStreamFromClass(ClientUI.class, "/runelite.png");
 
 	@Getter
@@ -522,8 +520,8 @@ public class ClientUI
 						frame.setBounds(clientBounds);
 
 						// frame.getGraphicsConfiguration().getBounds() returns the bounds for the primary display.
-						// We have to find the correct graphics configuration by using the intersection of the client boundaries.
-						GraphicsConfiguration gc = getIntersectingDisplay(clientBounds);
+						// We have to find the correct graphics configuration by using the client boundaries.
+						GraphicsConfiguration gc = findDisplayFromBounds(clientBounds);
 						if (gc != null)
 						{
 							double scale = gc.getDefaultTransform().getScaleX();
@@ -587,7 +585,7 @@ public class ClientUI
 		}
 	}
 
-	private GraphicsConfiguration getIntersectingDisplay(final Rectangle bounds)
+	private GraphicsConfiguration findDisplayFromBounds(final Rectangle bounds)
 	{
 		GraphicsDevice[] gds = GraphicsEnvironment.getLocalGraphicsEnvironment().getScreenDevices();
 
@@ -596,7 +594,7 @@ public class ClientUI
 			GraphicsConfiguration gc = gd.getDefaultConfiguration();
 
 			final Rectangle displayBounds = gc.getBounds();
-			if (displayBounds.intersects(bounds))
+			if (displayBounds.contains(bounds))
 			{
 				return gc;
 			}
